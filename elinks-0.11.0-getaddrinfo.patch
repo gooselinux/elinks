@@ -1,0 +1,27 @@
+diff --git a/src/network/dns.c b/src/network/dns.c
+index 8f73faf..5ececdd 100644
+--- a/src/network/dns.c
++++ b/src/network/dns.c
+@@ -157,9 +157,21 @@ do_real_lookup(unsigned char *name, struct sockaddr_storage **addrs, int *addrno
+ 	 * But we duplicate the code terribly here :|. */
+ 	/* hostent = getipnodebyname(name, AF_INET6, AI_ALL | AI_ADDRCONFIG, NULL); */
+ 	memset(&hint, 0, sizeof(hint));
++	hint.ai_flags = AI_ADDRCONFIG;
+ 	hint.ai_family = AF_UNSPEC;
+ 	hint.ai_socktype = SOCK_STREAM;
+-	if (getaddrinfo(name, NULL, &hint, &ai) != 0) return DNS_ERROR;
++	switch (getaddrinfo(name, NULL, &hint, &ai))
++	{
++	case 0:
++		break;
++	case EAI_BADFLAGS:
++		hint.ai_flags = 0;
++		if (getaddrinfo(name, NULL, &hint, &ai) == 0)
++			break;
++		/* fall through */
++	default:
++		return DNS_ERROR;
++	}
+ 
+ #else
+ 	/* Seems there are problems on Mac, so we first need to try
